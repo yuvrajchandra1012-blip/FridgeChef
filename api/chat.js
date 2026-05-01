@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages } = req.body ?? {};
+  const { messages, filters, calorieGoal } = req.body ?? {};
 
   // Validate messages array
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -64,10 +64,27 @@ export default async function handler(req, res) {
   // Trim history to last 20 turns to cap token usage
   const trimmed = messages.slice(-20);
 
+  // Build system prompt with optional dietary/calorie constraints
+  let systemContent = SYSTEM_PROMPT;
+  const addendums = [];
+  if (Array.isArray(filters) && filters.length > 0) {
+    const valid = filters.filter(f => ['vegan', 'gluten-free', 'dairy-free'].includes(f));
+    if (valid.length > 0) {
+      addendums.push(`DIETARY RESTRICTION (MANDATORY): All recipes must be strictly ${valid.join(' AND ')}.`);
+    }
+  }
+  if (typeof calorieGoal === 'number' && calorieGoal >= 500 && calorieGoal <= 5000) {
+    const perMeal = Math.round(calorieGoal / 3);
+    addendums.push(`USER CALORIE TARGET: ${calorieGoal} kcal/day. Target approximately ${perMeal} kcal per recipe (roughly one meal of three).`);
+  }
+  if (addendums.length > 0) {
+    systemContent += '\n\nADDITIONAL CONSTRAINTS:\n' + addendums.join('\n');
+  }
+
   const payload = {
     model: 'llama-3.3-70b-versatile',
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemContent },
       ...trimmed
     ],
     temperature: 0.7,

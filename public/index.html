@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FridgeChef — High-Protein Recipes from What You Have</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3148;
+      --accent: #4ade80;
+      --accent-hover: #22c55e;
+      --text: #e8eaf0;
+      --text-muted: #7c8099;
+      --user-bubble: #1e3a5f;
+      --user-bubble-border: #2d5a8e;
+      --error: #f87171;
+      --error-bg: #2d1515;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    #header .logo { display: flex; align-items: center; gap: 10px; }
+    #header .logo-icon { font-size: 22px; line-height: 1; }
+
+    #header .logo-text h1 {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    #header .logo-text h1 span { color: var(--accent); }
+    #header .logo-text p { font-size: 11px; color: var(--text-muted); }
+
+    .powered-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* ── Chat ── */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    #chat::-webkit-scrollbar { width: 4px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .message { display: flex; flex-direction: column; max-width: 80%; }
+    .message.user      { align-self: flex-end;   align-items: flex-end; }
+    .message.assistant { align-self: flex-start; align-items: flex-start; }
+    .message.error     { align-self: flex-start; align-items: flex-start; }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 16px;
+      line-height: 1.65;
+      word-break: break-word;
+    }
+
+    .message.user .bubble {
+      background: var(--user-bubble);
+      border: 1px solid var(--user-bubble-border);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.error .bubble {
+      background: var(--error-bg);
+      border: 1px solid #7f1d1d;
+      border-bottom-left-radius: 4px;
+      color: var(--error);
+      font-size: 13px;
+    }
+
+    .bubble strong { font-weight: 700; color: var(--accent); }
+    .bubble em     { font-style: italic; color: var(--text-muted); }
+    .bubble ul     { padding-left: 18px; margin: 6px 0; }
+    .bubble ol     { padding-left: 18px; margin: 6px 0; }
+    .bubble li     { margin: 3px 0; }
+    .bubble p      { margin: 6px 0; }
+    .bubble p:first-child { margin-top: 0; }
+    .bubble p:last-child  { margin-bottom: 0; }
+
+    .macros-line {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(74, 222, 128, 0.07);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: 6px;
+      padding: 5px 10px;
+      margin: 6px 0 2px;
+      display: inline-block;
+      letter-spacing: 0.02em;
+    }
+
+    /* Typing indicator */
+    .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 14px 16px; }
+    .typing-indicator span {
+      width: 7px; height: 7px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%            { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* Welcome screen */
+    #welcome { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+    #welcome .welcome-icon { font-size: 48px; margin-bottom: 12px; }
+    #welcome h2 { color: var(--text); font-size: 20px; margin-bottom: 8px; }
+    #welcome p  { font-size: 14px; max-width: 360px; margin: 0 auto 20px; }
+
+    #welcome .examples {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center; max-width: 480px; margin: 0 auto;
+    }
+
+    .example-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      color: var(--text-muted);
+    }
+    .example-chip:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Input bar ── */
+    #input-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    #user-input {
+      flex: 1;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      min-height: 42px;
+      max-height: 96px;
+      outline: none;
+      transition: border-color 0.15s;
+      line-height: 1.5;
+    }
+    #user-input:focus        { border-color: var(--accent); }
+    #user-input::placeholder { color: var(--text-muted); }
+
+    #send-btn {
+      background: var(--accent);
+      color: #0a0f0a;
+      border: none;
+      border-radius: 10px;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, transform 0.1s;
+    }
+    #send-btn:hover    { background: var(--accent-hover); }
+    #send-btn:active   { transform: scale(0.95); }
+    #send-btn:disabled { background: var(--surface2); cursor: not-allowed; }
+    #send-btn svg      { width: 18px; height: 18px; }
+
+    @media (max-width: 480px) { .message { max-width: 92%; } }
+  </style>
+</head>
+<body>
+
+  <header id="header">
+    <div class="logo">
+      <div class="logo-icon">🥗</div>
+      <div class="logo-text">
+        <h1>Fridge<span>Chef</span></h1>
+        <p>High-protein recipes from what you have</p>
+      </div>
+    </div>
+    <span class="powered-badge">Powered by Groq</span>
+  </header>
+
+  <div id="chat">
+    <div id="welcome">
+      <div class="welcome-icon">🥦</div>
+      <h2>What's in your fridge?</h2>
+      <p>List your ingredients and I'll build high-protein, high-fiber recipes around them. Try an example:</p>
+      <div class="examples">
+        <button class="example-chip" data-text="chicken breast, spinach, Greek yogurt, oats, eggs">chicken, spinach, Greek yogurt, oats, eggs</button>
+        <button class="example-chip" data-text="canned tuna, chickpeas, tomatoes, cucumber, lemon">tuna, chickpeas, tomatoes, cucumber</button>
+        <button class="example-chip" data-text="tofu, edamame, broccoli, soy sauce, brown rice">tofu, edamame, broccoli, brown rice</button>
+        <button class="example-chip" data-text="ground beef, black beans, corn, bell peppers, cheese">ground beef, black beans, corn, bell peppers</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <textarea id="user-input" placeholder="e.g. chicken breast, spinach, Greek yogurt, oats…" rows="1"></textarea>
+    <button id="send-btn" title="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+
+  <script>
+    const state = { messages: [], isLoading: false };
+
+    const chat      = document.getElementById('chat');
+    const userInput = document.getElementById('user-input');
+    const sendBtn   = document.getElementById('send-btn');
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function inline(text) {
+      return escHtml(text)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+    }
+
+    function parseMarkdown(text) {
+      const lines = text.split('\n');
+      let html = '', inList = false, listType = null;
+
+      const flushList = () => {
+        if (inList) { html += `</${listType}>`; inList = false; listType = null; }
+      };
+
+      lines.forEach(line => {
+        if (/^Macros per serving:/i.test(line)) {
+          flushList();
+          html += `<div class="macros-line">${escHtml(line)}</div>`;
+          return;
+        }
+        if (/^[-*] /.test(line)) {
+          if (!inList || listType !== 'ul') { flushList(); html += '<ul>'; inList = true; listType = 'ul'; }
+          html += `<li>${inline(line.replace(/^[-*] /, ''))}</li>`;
+          return;
+        }
+        if (/^\d+\. /.test(line)) {
+          if (!inList || listType !== 'ol') { flushList(); html += '<ol>'; inList = true; listType = 'ol'; }
+          html += `<li>${inline(line.replace(/^\d+\. /, ''))}</li>`;
+          return;
+        }
+        flushList();
+        if (line.trim() === '') return;
+        html += `<p>${inline(line)}</p>`;
+      });
+
+      flushList();
+      return html;
+    }
+
+    function renderMessage(role, content) {
+      const welcome = document.getElementById('welcome');
+      if (welcome) welcome.remove();
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `message ${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      if (role === 'assistant') bubble.innerHTML = parseMarkdown(content);
+      else bubble.textContent = content;
+
+      wrapper.appendChild(bubble);
+      chat.appendChild(wrapper);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showTyping() {
+      const w = document.createElement('div');
+      w.className = 'message assistant'; w.id = 'typing';
+      const b = document.createElement('div');
+      b.className = 'bubble typing-indicator';
+      b.innerHTML = '<span></span><span></span><span></span>';
+      w.appendChild(b); chat.appendChild(w);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function removeTyping() {
+      const t = document.getElementById('typing');
+      if (t) t.remove();
+    }
+
+    function getErrorMessage(err) {
+      if (!err.status) return "Couldn't reach the server. Check your internet connection.";
+      if (err.status === 429) return "We're getting a lot of requests right now. Wait a moment and try again.";
+      return `Something went wrong (${err.status}). Please try again in a moment.`;
+    }
+
+    async function callAPI() {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: state.messages })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data.choices[0].message.content;
+    }
+
+    async function sendMessage(text) {
+      if (state.isLoading) return;
+      text = (text || userInput.value).trim();
+      if (!text) return;
+
+      userInput.value = '';
+      autoResize();
+      state.isLoading = true;
+      sendBtn.disabled = true;
+
+      renderMessage('user', text);
+      state.messages.push({ role: 'user', content: text });
+      showTyping();
+
+      try {
+        const reply = await callAPI();
+        removeTyping();
+        state.messages.push({ role: 'assistant', content: reply });
+        renderMessage('assistant', reply);
+      } catch (err) {
+        removeTyping();
+        state.messages.pop();
+        renderMessage('error', getErrorMessage(err));
+      } finally {
+        state.isLoading = false;
+        sendBtn.disabled = false;
+        userInput.focus();
+      }
+    }
+
+    function autoResize() {
+      userInput.style.height = 'auto';
+      userInput.style.height = Math.min(userInput.scrollHeight, 96) + 'px';
+    }
+
+    sendBtn.addEventListener('click', () => sendMessage());
+    userInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    userInput.addEventListener('input', autoResize);
+    document.querySelectorAll('.example-chip').forEach(chip => {
+      chip.addEventListener('click', () => sendMessage(chip.dataset.text));
+    });
+
+    userInput.focus();
+  </script>
+</body>
+</html>

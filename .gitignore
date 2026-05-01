@@ -1,0 +1,10 @@
+.env
+credentials.json
+token.json
+.tmp/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+.vercel/
+.vercel

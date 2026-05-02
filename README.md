@@ -83,11 +83,8 @@ Your API key never touches the frontend — it lives only in Vercel's encrypted 
 
 ## Roadmap
 
-- [ ] Recipe card UI (structured cards instead of chat bubbles)
-- [ ] Dietary filter toggles (vegan, gluten-free, dairy-free)
-- [ ] Copy recipe to clipboard
-- [ ] Calorie goal input that adjusts recipe targeting
-
+- [ ] Make it more refined 
+- [ ] Would love your suggestions :)
 ---
 
 ## Built By

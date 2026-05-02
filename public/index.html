@@ -730,14 +730,31 @@
       const copyText = buildCopyText(recipe);
 
       copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(copyText).then(() => {
+        const confirm = () => {
           copyBtn.classList.add('copied');
           copyLabel.textContent = 'Copied!';
-          setTimeout(() => {
-            copyBtn.classList.remove('copied');
-            copyLabel.textContent = 'Copy';
-          }, 1800);
-        });
+          setTimeout(() => { copyBtn.classList.remove('copied'); copyLabel.textContent = 'Copy'; }, 1800);
+        };
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(copyText).then(confirm).catch(() => {
+            // Fallback for non-HTTPS or restricted contexts
+            const ta = document.createElement('textarea');
+            ta.value = copyText;
+            ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            confirm();
+          });
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = copyText;
+          ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          confirm();
+        }
       });
 
       return card;
@@ -802,8 +819,9 @@
     }
 
     function getErrorMessage(err) {
-      if (!err.status) return "Couldn't reach the server. Check your internet connection.";
-      if (err.status === 429) return "We're getting a lot of requests right now. Wait a moment and try again.";
+      if (!err?.status) return "Couldn't reach the server. Check your internet connection.";
+      if (err.status === 429) return "Too many requests — wait a moment and try again.";
+      if (err.status === 502) return "The AI provider returned an unexpected response. Please try again.";
       return `Something went wrong (${err.status}). Please try again in a moment.`;
     }
 
@@ -823,7 +841,9 @@
       });
       const data = await res.json();
       if (!res.ok) throw { status: res.status, data };
-      return data.choices[0].message.content;
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) throw { status: 502, data };
+      return content;
     }
 
     async function sendMessage(text) {
@@ -847,7 +867,6 @@
         renderMessage('assistant', reply);
       } catch (err) {
         removeTyping();
-        state.messages.pop();
         renderMessage('error', getErrorMessage(err));
       } finally {
         state.isLoading = false;
